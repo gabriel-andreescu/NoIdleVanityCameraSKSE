@@ -1,0 +1,22 @@
+CompileFlags:
+  CompilationDatabase: build
+
+Diagnostics:
+  UnusedIncludes: None
+  ClangTidy:
+    Remove:
+      - misc-unused-alias-decls
+
+Index:
+  StandardLibrary: false
+
+---
+
+If:
+  PathMatch: extern/.*
+
+Index:
+  Background: Skip
+
+Diagnostics:
+  Suppress: ['*']
