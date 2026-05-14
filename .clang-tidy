@@ -1,6 +1,7 @@
 Checks: >
   -*,
   bugprone-*,
+  -bugprone-exception-escape,
   clang-analyzer-*,
   modernize-*,
   performance-*,

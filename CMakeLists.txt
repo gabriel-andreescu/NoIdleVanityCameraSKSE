@@ -13,6 +13,12 @@ project(
         LANGUAGES CXX
 )
 
+option(NIVC_ENABLE_PRECOMPILED_HEADERS "Enable CMake precompiled headers" ON)
+
+find_program(CLANG_TIDY_EXECUTABLE NAMES clang-tidy)
+find_program(RUN_CLANG_TIDY_EXECUTABLE NAMES run-clang-tidy run-clang-tidy.py)
+find_package(Python3 COMPONENTS Interpreter QUIET)
+
 if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
     message(FATAL_ERROR "In-source builds not allowed. Please make a build directory and run CMake from there.")
 endif ()
@@ -42,7 +48,12 @@ configure_file(
 )
 
 set(SOURCES
+        src/Hooks.cpp
+        src/Hooks.h
         src/main.cpp
+        src/PCH.h
+        src/VanityCamera.cpp
+        src/VanityCamera.h
         "${CMAKE_CURRENT_BINARY_DIR}/version.rc"
 )
 
@@ -70,11 +81,19 @@ target_link_libraries(
         CommonLibSSE::CommonLibSSE
 )
 
-target_precompile_headers(
-        ${PROJECT_NAME}
-        PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/PCH.h"
-)
+if (NIVC_ENABLE_PRECOMPILED_HEADERS)
+    target_precompile_headers(
+            ${PROJECT_NAME}
+            PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/PCH.h"
+    )
+else ()
+    target_compile_options(
+            ${PROJECT_NAME}
+            PRIVATE
+            $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/FI${CMAKE_CURRENT_SOURCE_DIR}/src/PCH.h>
+    )
+endif ()
 
 if (MSVC)
     target_compile_options(
@@ -121,3 +140,26 @@ if (DEPLOY_DIR AND EXISTS "${DEPLOY_DIR}")
     )
 endif ()
 
+if (CLANG_TIDY_EXECUTABLE)
+    add_custom_target(
+            ${PROJECT_NAME}_clang_tidy
+            COMMAND "${CMAKE_COMMAND}"
+                    "-DCLANG_TIDY_EXECUTABLE=${CLANG_TIDY_EXECUTABLE}"
+                    "-DRUN_CLANG_TIDY_EXECUTABLE=${RUN_CLANG_TIDY_EXECUTABLE}"
+                    "-DPython3_EXECUTABLE=${Python3_EXECUTABLE}"
+                    "-DCLANG_TIDY_JOBS=8"
+                    "-DCOMPILE_COMMANDS_FILE=${CMAKE_BINARY_DIR}/compile_commands.json"
+                    "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
+                    "-DSOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/src"
+                    -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/run_clang_tidy.cmake"
+            COMMENT "Running clang-tidy on ${PROJECT_NAME} source files"
+            VERBATIM
+    )
+else ()
+    add_custom_target(
+            ${PROJECT_NAME}_clang_tidy
+            COMMAND "${CMAKE_COMMAND}" -E false
+            COMMENT "clang-tidy was not found"
+            VERBATIM
+    )
+endif ()
