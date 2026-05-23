@@ -1,5 +1,7 @@
 # No Idle Vanity Camera SKSE
 
+Lightweight SKSE plugin that completely disables the idle rotating camera around the player.
+
 ---
 
 ## Clone and Build
@@ -19,7 +21,7 @@ Optionally:
 cp CMakeUserPresets.json.example CMakeUserPresets.json
 # Edit CMakeUserPresets.json and set DEPLOY_DIR to your Skyrim Data directory
 cmake --preset=user-default
-cmake --build --preset=release    # or --preset=debug
+cmake --build --preset=release
 ```
 
 ### **Debugging**
@@ -33,9 +35,12 @@ cmake --build --preset=release    # or --preset=debug
 
 ### **Deployment**
 
-When `DEPLOY_DIR` is set (for example via `CMakeUserPresets.json` created from `CMakeUserPresets.json.example`), any successful build will automatically copy the plugin (and its PDB) to:
+When `DEPLOY_DIR` is set (for example via `CMakeUserPresets.json` created from `CMakeUserPresets.json.example`), any
+successful build will automatically copy the plugin (and its PDB) to:
 
 `<DEPLOY_DIR>/SKSE/Plugins`
+
+For deployment to multiple targets, split the paths with a `;`.
 
 If you use the example user presets, running:
 
@@ -43,27 +48,15 @@ If you use the example user presets, running:
 
 will build the `RelWithDebInfo` configuration and deploy the plugin to your Skyrim Data directory.
 
----
-
-### **INI Settings**
-
-On first run, the plugin creates a config file at:
-
-```text
-Data/SKSE/Plugins/NoIdleVanityCameraSKSE.ini
-```
-
----
-
 ## Requirements
 
 - [Git](https://git-scm.com/downloads)
 - [Visual Studio Community 2022](https://visualstudio.microsoft.com/)
-  - Desktop development with C++
+    - Desktop development with C++
 - [CMake](https://cmake.org/)
-  - Add the cmake.exe install path to the `PATH` environment variable
+    - Add the cmake.exe install path to the `PATH` environment variable
 - [Vcpkg](https://learn.microsoft.com/en-us/vcpkg/get-started/get-started?pivots=shell-powershell#1---set-up-vcpkg)
-  - Add a new `VCPKG_ROOT` environment variable pointing to the root folder of vcpkg (e.g., `C:\vcpkg`)
+    - Add a new `VCPKG_ROOT` environment variable pointing to the root folder of vcpkg (e.g., `C:\vcpkg`)
 
 This project is developed using the **non-commercial** version of [CLion](https://www.jetbrains.com/clion/)
 
@@ -79,8 +72,17 @@ Open PowerShell and run the following command:
 
 ## User Requirements
 
-- [Address Library for SKSE](https://www.nexusmods.com/skyrimspecialedition/mods/32444) - needed for SE/AE
-- [VR Address Library for SKSEVR](https://www.nexusmods.com/skyrimspecialedition/mods/58101) - needed for VR
+- [Address Library for SKSE](https://www.nexusmods.com/skyrimspecialedition/mods/32444)
+
+---
+
+## Compatibility
+
+This is an SE/AE SKSE plugin. Skyrim VR runtime support is disabled.
+
+Mods that replace the idle camera with another behavior, such
+as [Sandbox When Idle](https://www.nexusmods.com/skyrimspecialedition/mods/131350), are alternatives rather than
+something to combine with this.
 
 ---
 

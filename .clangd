@@ -1,5 +1,8 @@
 CompileFlags:
-  CompilationDatabase: build
+  CompilationDatabase: build/lint
+  Compiler: clang-cl
+  Add:
+    - --target=x86_64-pc-windows-msvc
 
 Diagnostics:
   UnusedIncludes: None
@@ -13,7 +16,7 @@ Index:
 ---
 
 If:
-  PathMatch: extern/.*
+  PathMatch: (extern|build)/.*
 
 Index:
   Background: Skip

@@ -8,10 +8,12 @@ set(VCPKG_INSTALL_OPTIONS "--no-print-usage")
 
 project(
         NoIdleVanityCameraSKSE
-        VERSION 1.0.0
+        VERSION 2.0.0
         DESCRIPTION "Vanity camera begone"
         LANGUAGES CXX
 )
+
+set(OPTIONAL_ASSETS_VERSION ${PROJECT_VERSION})
 
 option(NIVC_ENABLE_PRECOMPILED_HEADERS "Enable CMake precompiled headers" ON)
 
@@ -35,7 +37,10 @@ if (SUPPORTS_IPO)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
 endif ()
 
-set(DEPLOY_DIR "" CACHE PATH "Deployment directory (e.g., C:/Games/Skyrim SE/Data)")
+set(DEPLOY_DIR "" CACHE PATH "Deployment directory for base mod assets")
+set(DEPLOY_DIR_OPTIONAL "" CACHE PATH "Deployment directory for optional mod assets")
+set(ASSET_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Skyrim/Data")
+set(DIST_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dist" CACHE PATH "Directory where release ZIP files are written")
 
 add_subdirectory(extern/CommonLibSSE-NG)
 
@@ -126,32 +131,72 @@ add_custom_command(
         VERBATIM
 )
 
-if (DEPLOY_DIR AND EXISTS "${DEPLOY_DIR}")
-    set(PLUGIN_DIR "${DEPLOY_DIR}/SKSE/Plugins")
+if (DEPLOY_DIR)
+    foreach (deploy_dir IN LISTS DEPLOY_DIR)
+        set(PLUGIN_DIR "${deploy_dir}/SKSE/Plugins")
+
+        add_custom_command(
+                TARGET ${PROJECT_NAME}
+                POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E echo "Deploying to: ${PLUGIN_DIR}"
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${PLUGIN_DIR}"
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>" "${PLUGIN_DIR}"
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_PDB_FILE:${PROJECT_NAME}>" "${PLUGIN_DIR}"
+                VERBATIM
+        )
+    endforeach ()
 
     add_custom_command(
             TARGET ${PROJECT_NAME}
             POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E echo "Deploying to: ${PLUGIN_DIR}"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${PLUGIN_DIR}"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>" "${PLUGIN_DIR}"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_PDB_FILE:${PROJECT_NAME}>" "${PLUGIN_DIR}"
+            COMMAND "${CMAKE_COMMAND}"
+            "-DASSET_SOURCE_DIR=${ASSET_SOURCE_DIR}"
+            "-DDEPLOY_DIR=${DEPLOY_DIR}"
+            "-DDEPLOY_DIR_OPTIONAL=${DEPLOY_DIR_OPTIONAL}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/deploy_assets.cmake"
             VERBATIM
     )
 endif ()
 
-if (CLANG_TIDY_EXECUTABLE)
+add_custom_target(
+        ${PROJECT_NAME}_dist
+        COMMAND "${CMAKE_COMMAND}"
+        "-DMOD_NAME=${PROJECT_NAME}"
+        "-DMOD_VERSION=${PROJECT_VERSION}"
+        "-DOPTIONAL_ASSETS_VERSION=${OPTIONAL_ASSETS_VERSION}"
+        "-DPLUGIN_DLL=$<TARGET_FILE:${PROJECT_NAME}>"
+        "-DPLUGIN_PDB=$<TARGET_PDB_FILE:${PROJECT_NAME}>"
+        "-DASSET_SOURCE_DIR=${ASSET_SOURCE_DIR}"
+        "-DOUTPUT_DIR=${DIST_OUTPUT_DIR}"
+        "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/dist/$<CONFIG>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/package_skse_mod.cmake"
+        DEPENDS ${PROJECT_NAME}
+        COMMENT "Creating ${PROJECT_NAME} distribution archive"
+        VERBATIM
+)
+
+if (NIVC_ENABLE_PRECOMPILED_HEADERS)
+    add_custom_target(
+            ${PROJECT_NAME}_clang_tidy
+            COMMAND "${CMAKE_COMMAND}" -E echo "clang-tidy is disabled in this PCH-enabled build tree."
+            COMMAND "${CMAKE_COMMAND}" -E echo "Use: cmake --preset ninja-lint"
+            COMMAND "${CMAKE_COMMAND}" -E echo "Then: cmake --build --preset clang-tidy"
+            COMMAND "${CMAKE_COMMAND}" -E false
+            COMMENT "clang-tidy requires the ninja-lint preset"
+            VERBATIM
+    )
+elseif (CLANG_TIDY_EXECUTABLE)
     add_custom_target(
             ${PROJECT_NAME}_clang_tidy
             COMMAND "${CMAKE_COMMAND}"
-                    "-DCLANG_TIDY_EXECUTABLE=${CLANG_TIDY_EXECUTABLE}"
-                    "-DRUN_CLANG_TIDY_EXECUTABLE=${RUN_CLANG_TIDY_EXECUTABLE}"
-                    "-DPython3_EXECUTABLE=${Python3_EXECUTABLE}"
-                    "-DCLANG_TIDY_JOBS=8"
-                    "-DCOMPILE_COMMANDS_FILE=${CMAKE_BINARY_DIR}/compile_commands.json"
-                    "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
-                    "-DSOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/src"
-                    -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/run_clang_tidy.cmake"
+            "-DCLANG_TIDY_EXECUTABLE=${CLANG_TIDY_EXECUTABLE}"
+            "-DRUN_CLANG_TIDY_EXECUTABLE=${RUN_CLANG_TIDY_EXECUTABLE}"
+            "-DPython3_EXECUTABLE=${Python3_EXECUTABLE}"
+            "-DCLANG_TIDY_JOBS=8"
+            "-DCOMPILE_COMMANDS_FILE=${CMAKE_BINARY_DIR}/compile_commands.json"
+            "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
+            "-DSOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/src"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/run_clang_tidy.cmake"
             COMMENT "Running clang-tidy on ${PROJECT_NAME} source files"
             VERBATIM
     )

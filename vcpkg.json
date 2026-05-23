@@ -1,15 +1,15 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "name": "noidlevanitycameraskse",
-  "version-string": "1.0.0",
+  "version-string": "2.0.0",
   "description": "Vanity camera begone",
   "homepage": "https://github.com/gabriel-andreescu/NoIdleVanityCameraSKSE",
   "license": "MIT",
   "dependencies": [
     "spdlog",
     "rapidcsv",
-    "directxtk"
+    "directxtk",
+    "xbyak"
   ],
   "builtin-baseline": "edffab1bcd2cb5b8c17d6ba34d5651ea0bf82979"
 }
-

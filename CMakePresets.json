@@ -22,6 +22,8 @@
       },
       "cacheVariables": {
         "BUILD_TESTS": "OFF",
+        "ENABLE_SKYRIM_VR": "OFF",
+        "SKSE_SUPPORT_XBYAK": "ON",
         "VCPKG_TARGET_TRIPLET": "x64-windows-static-md"
       }
     },
@@ -32,6 +34,8 @@
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "BUILD_TESTS": "OFF",
+        "ENABLE_SKYRIM_VR": "OFF",
+        "SKSE_SUPPORT_XBYAK": "ON",
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CMAKE_CXX_SCAN_FOR_MODULES": "OFF",

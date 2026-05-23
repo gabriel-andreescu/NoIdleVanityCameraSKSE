@@ -7,7 +7,7 @@ void Disable(const char* a_source) {
         cameraData.allowAutoVanityMode = false;
         cameraData.idleTimer = 0.0f;
     } else {
-        logger::warn("PlayerCamera unavailable while disabling auto vanity from {}", a_source);
+        logger::warn("VanityCamera: disable skipped | reason=noPlayerCamera | source={}", a_source);
     }
 }
 }

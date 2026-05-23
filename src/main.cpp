@@ -1,24 +1,37 @@
-#include "PCH.h"
 #include "Hooks.h"
+#include "PCH.h"
 
-// ReSharper disable once CppParameterMayBeConstPtrOrRef
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/msvc_sink.h>
+
+#include <format>
+#include <memory>
+#include <utility>
+
+namespace {
+constexpr auto kTrampolineSize = 64;
+
 void MessageHandler(SKSE::MessagingInterface::Message* a_msg) {
-    if (a_msg->type == SKSE::MessagingInterface::kDataLoaded) {
-        Hooks::Install();
+    if (!a_msg) {
+        return;
     }
 
+    switch (a_msg->type) {
+        case SKSE::MessagingInterface::kDataLoaded: Hooks::Install(); break;
+        default:                                    break;
+    }
 }
 
-SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
+void InitializeLogging() {
     std::shared_ptr<spdlog::sinks::sink> sink;
     if (IsDebuggerPresent()) {
         sink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
     } else {
-        // ReSharper disable once CppLocalVariableMayBeConst
         auto path = SKSE::log::log_directory();
         if (!path) {
             stl::report_and_fail("Failed to find standard logging directory"sv);
         }
+
         const auto* plugin = SKSE::PluginDeclaration::GetSingleton();
         *path /= std::format("{}.log", plugin->GetName());
         sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(path->string(), true);
@@ -35,18 +48,22 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
     logger->flush_on(spdlog::level::trace);
     spdlog::set_default_logger(std::move(logger));
     spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] [%t] [%s:%#] %v");
+}
+}
+
+SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
+    InitializeLogging();
 
     SKSE::Init(a_skse, false);
-    SKSE::AllocTrampoline(28);
+    SKSE::AllocTrampoline(kTrampolineSize);
 
-    const auto* msg = SKSE::GetMessagingInterface();
-    if (!msg) {
-        stl::report_and_fail("Failed to get SKSE messaging interface.");
+    const auto* messaging = SKSE::GetMessagingInterface();
+    if (!messaging) {
+        logger::critical("SKSE: messaging interface unavailable");
+        return false;
     }
 
-    if (!msg->RegisterListener(MessageHandler)) {
-        stl::report_and_fail("Failed to register for SKSE messages.");
-    }
-
+    messaging->RegisterListener(MessageHandler);
+    logger::info("NoIdleVanityCameraSKSE loaded");
     return true;
 }
