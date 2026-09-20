@@ -1,121 +1,98 @@
 #include "Hooks.h"
-#include "VanityCamera.h"
 
-#include <array>
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
+#include <SKSE/SKSE.h>
 
+#include <RE/P/PlayerCamera.h>
+#include <RE/T/TESCamera.h>
+#include <RE/T/TESCameraState.h>
+#include <REL/Pattern.h>
+#include <REL/Relocation.h>
 #include <xbyak/xbyak.h>
 
-namespace {
-constexpr std::size_t kSetStatePatchSize = 5;
+#include <array>
+#include <cstdint>
+#include <cstring>
+#include <span>
 
-constexpr std::array<std::byte, kSetStatePatchSize> kTESCameraSetStatePrologue {
-    std::byte {0x48},
-    std::byte {0x89},
-    std::byte {0x5C},
-    std::byte {0x24},
-    std::byte {0x08},
+namespace {
+// mov [rsp + 8], rbx is one complete instruction on the supported runtimes.
+constexpr std::array<std::uint8_t, 5> kSetStatePrologue {0x48, 0x89, 0x5C, 0x24, 0x08};
+
+struct TESCameraSetState {
+    static void Thunk(RE::TESCamera* a_camera, RE::TESCameraState* a_state) {
+        auto* playerCamera = RE::PlayerCamera::GetSingleton();
+        if ((playerCamera != nullptr)
+            && (a_camera == playerCamera)
+            && (a_state != nullptr)
+            && (a_state->id == RE::CameraState::kAutoVanity)) {
+            auto& cameraData = playerCamera->GetRuntimeData2();
+            cameraData.allowAutoVanityMode = false;
+            cameraData.idleTimer = 0.0F;
+            SKSE::log::debug("Blocked the player camera's auto-vanity transition.");
+            return;
+        }
+
+        original(a_camera, a_state);
+    }
+
+    static inline REL::Relocation<decltype(Thunk)> original;
 };
 
-[[nodiscard]] bool HasExpectedTESCameraSetStatePrologue(const std::byte* a_address) noexcept {
-    return std::memcmp(a_address, kTESCameraSetStatePrologue.data(), kTESCameraSetStatePrologue.size()) == 0;
-}
-
-template <class T, std::size_t BYTES>
-void HookFunctionPrologue(const std::uintptr_t a_src, const std::byte* a_originalBytes) {
+void InstallPrologueHook(std::uintptr_t a_address) {
     struct Patch : Xbyak::CodeGenerator {
-        Patch(
-            const std::uintptr_t a_originalFuncAddr,
-            const std::byte* a_originalBytes,
-            const std::size_t a_originalByteLength
-        ) {
-            for (::std::size_t i = 0; i < a_originalByteLength; ++i) {
-                db(::std::to_integer<::std::uint8_t>(a_originalBytes[i]));
+        explicit Patch(std::uintptr_t a_originalAddress) {
+            for (const auto byte : kSetStatePrologue) {
+                db(byte);
             }
-
             jmp(ptr[rip]);
-            dq(a_originalFuncAddr + a_originalByteLength);
+            dq(a_originalAddress + kSetStatePrologue.size());
         }
     };
 
-    Patch patch(a_src, a_originalBytes, BYTES);
+    Patch patch(a_address);
     patch.ready();
 
     auto& trampoline = SKSE::GetTrampoline();
-    trampoline.write_branch<5>(a_src, T::thunk);
-
-    const auto alloc = trampoline.allocate(patch.getSize());
-    std::memcpy(alloc, patch.getCode(), patch.getSize());
-
-    T::func = reinterpret_cast<std::uintptr_t>(alloc);
-}
-
-void LogUnsupportedTESCameraSetStatePrologue(const std::uintptr_t a_address, const std::byte* a_bytes) {
-    logger::critical(
-        "Hooks: TESCamera::SetState hook skipped | reason=unsupportedPrologue | address={:X} | bytes={:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}",
-        a_address,
-        std::to_integer<unsigned>(a_bytes[0]),
-        std::to_integer<unsigned>(a_bytes[1]),
-        std::to_integer<unsigned>(a_bytes[2]),
-        std::to_integer<unsigned>(a_bytes[3]),
-        std::to_integer<unsigned>(a_bytes[4]),
-        std::to_integer<unsigned>(a_bytes[5]),
-        std::to_integer<unsigned>(a_bytes[6]),
-        std::to_integer<unsigned>(a_bytes[7])
-    );
-}
-
-[[nodiscard]] bool IsPlayerAutoVanityState(RE::TESCamera* a_camera, RE::TESCameraState* a_state) noexcept {
-    return a_camera
-           && (a_camera == RE::PlayerCamera::GetSingleton())
-           && a_state
-           && (a_state->id == RE::CameraState::kAutoVanity);
+    auto* gateway = trampoline.allocate(patch.getSize());
+    std::memcpy(gateway, patch.getCode(), patch.getSize());
+    TESCameraSetState::original = reinterpret_cast<std::uintptr_t>(gateway);
+    trampoline.write_branch<kSetStatePrologue.size()>(a_address, TESCameraSetState::Thunk);
 }
 }
 
 namespace Hooks {
 void Install() {
-    if (!TESCameraSetState::Install()) {
-        logger::critical("Hooks: install failed | reason=setStateHook");
-        return;
-    }
-
-    logger::info("Hooks: installed");
-}
-
-bool TESCameraSetState::Install() {
-    REL::Relocation<std::byte*> target {RELOCATION_ID(32290, 33026)};
-    const auto* targetBytes = target.get();
+    const REL::Relocation<const std::uint8_t*> target {RELOCATION_ID(32290, 33026)};
     const auto address = target.address();
-    auto& trampoline = SKSE::GetTrampoline();
 
     if (REL::make_pattern<"E9">().match(address)) {
-        func = trampoline.write_branch<kSetStatePatchSize>(address, thunk);
-
-        logger::warn("Hooks: TESCamera::SetState hook chained | reason=existingBranch | branch=E9");
-        return true;
-    }
-
-    if (HasExpectedTESCameraSetStatePrologue(targetBytes)) {
-        HookFunctionPrologue<TESCameraSetState, kSetStatePatchSize>(address, targetBytes);
-
-        logger::info("Hooks: TESCamera::SetState hook installed");
-        return true;
-    }
-
-    LogUnsupportedTESCameraSetStatePrologue(address, targetBytes);
-    return false;
-}
-
-void TESCameraSetState::thunk(RE::TESCamera* a_camera, RE::TESCameraState* a_state) {
-    if (IsPlayerAutoVanityState(a_camera, a_state)) {
-        VanityCamera::Disable("TESCamera::SetState");
-        logger::debug("Hooks: TESCamera::SetState blocked | state=AutoVanity");
+        TESCameraSetState::original = SKSE::GetTrampoline().write_branch<kSetStatePrologue.size()>(
+            address,
+            TESCameraSetState::Thunk
+        );
+        SKSE::log::info("Chained the existing TESCamera::SetState hook.");
         return;
     }
 
-    func(a_camera, a_state);
+    if (std::memcmp(target.get(), kSetStatePrologue.data(), kSetStatePrologue.size()) == 0) {
+        InstallPrologueHook(address);
+        SKSE::log::info("Installed the TESCamera::SetState hook.");
+        return;
+    }
+
+    const std::span<const std::uint8_t, 8> bytes(target.get(), 8);
+    SKSE::log::critical(
+        "Cannot hook TESCamera::SetState at {:X}: unexpected bytes {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}. "
+        "Vanity camera suppression is unavailable.",
+        address,
+        bytes[0],
+        bytes[1],
+        bytes[2],
+        bytes[3],
+        bytes[4],
+        bytes[5],
+        bytes[6],
+        bytes[7]
+    );
 }
 }
