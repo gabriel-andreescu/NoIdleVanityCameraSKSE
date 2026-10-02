@@ -1,15 +1,30 @@
 # NoIdleVanityCameraSKSE
 
+Disables the idle vanity camera.
+
 This project uses
-[BethesdaModKit](https://github.com/gabriel-andreescu/BethesdaModKit) for
-project generation and development tooling. Follow BMK's
-[project build instructions](https://github.com/gabriel-andreescu/BethesdaModKit/blob/main/docs/mod-authors/template/projects.md#build-a-generated-project),
-[deployment and packaging guide](https://github.com/gabriel-andreescu/BethesdaModKit/blob/main/docs/mod-authors/tooling/packaging.md),
-[formatting setup](https://github.com/gabriel-andreescu/BethesdaModKit/blob/main/docs/mod-authors/template/defaults.md#formatting),
-and
-[Clang tooling](https://github.com/gabriel-andreescu/BethesdaModKit/blob/main/docs/mod-authors/tooling/clang.md).
+[BethesdaModKit (BMK)](https://github.com/gabriel-andreescu/BethesdaModKit) for
+project generation and development tooling.
 
 Supports Skyrim SE and AE. Skyrim VR is not supported.
+
+## Development
+
+```powershell
+xmake
+xmake package
+```
+
+- [Build instructions](https://github.com/gabriel-andreescu/BethesdaModKit/blob/main/docs/mod-authors/template/projects.md#build-a-generated-project)
+- [Deployment and packaging](https://github.com/gabriel-andreescu/BethesdaModKit/blob/main/docs/mod-authors/tooling/packaging.md)
+- [Formatting setup](https://github.com/gabriel-andreescu/BethesdaModKit/blob/main/docs/mod-authors/template/defaults.md#formatting)
+- [Clang tooling](https://github.com/gabriel-andreescu/BethesdaModKit/blob/main/docs/mod-authors/tooling/clang.md)
+
+## CI
+
+See
+[workflow setup](https://github.com/gabriel-andreescu/BethesdaModKit/blob/main/docs/mod-authors/tooling/github-actions.md)
+for build inputs and releases.
 
 ## Credits
 

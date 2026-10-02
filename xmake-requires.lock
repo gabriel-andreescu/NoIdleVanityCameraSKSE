@@ -13,8 +13,8 @@
         },
         ["commonlibsse-ng 8.0.1#f56260b5"] = {
             repo = {
-                commit = "5aed0c4df0e6b1a08a4308749138a4a981cfef07",
-                url = "https://github.com/gabriel-andreescu/BethesdaModKit.git"
+                commit = "d39bc83ee1282450a358a86fc64ad7eff5682110",
+                url = "https://github.com/gabriel-andreescu/BethesdaModKit"
             },
             version = "8.0.1"
         },

@@ -1,10 +1,9 @@
-_commit: v0.2.0
+_commit: v0.5.0
 _src_path: https://github.com/gabriel-andreescu/BethesdaModKit.git
 author: gabriel-andreescu
-bmk_repository: https://github.com/gabriel-andreescu/BethesdaModKit.git
 clib_util: false
 components:
-  - native
+- native
 description: Disables the idle vanity camera.
 devbench_api: false
 devbench_tests: false
@@ -14,3 +13,4 @@ native_source: src
 pack_assets: false
 pre_commit: true
 project_name: NoIdleVanityCameraSKSE
+tooling_only: false
